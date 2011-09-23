@@ -5,7 +5,12 @@ import java.util.List;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import android.hardware.Camera;
+import android.hardware.Camera.Parameters;
 import android.hardware.Camera.Size;
 import android.os.Bundle;
 import android.util.Log;
@@ -15,9 +20,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.RelativeLayout;
 
 public class CineCameraActivity extends Activity {
 	private Preview mPreview;
+	private DrawOnTop mDrawOnTop;
     Camera mCamera;
 
     @Override
@@ -31,7 +38,18 @@ public class CineCameraActivity extends Activity {
         // Create a RelativeLayout container that will hold a SurfaceView,
         // and set it as the content of our activity.
         mPreview = new Preview(this);
+        mDrawOnTop = new DrawOnTop(this);
+        
+        RelativeLayout contentView = new RelativeLayout(this);
+        //contentView.addView(mPreview);
+        //contentView.addView(mDrawOnTop);
+        
         setContentView(mPreview);
+        
+//        addContentView(mDrawOnTop, new LayoutParams 
+//        		(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)); 
+        //mPreview.addView(mDrawOnTop);
+        //mPreview.add
 
     }
 
@@ -41,7 +59,10 @@ public class CineCameraActivity extends Activity {
 
         // Open the default i.e. the first rear facing camera.
         mCamera = Camera.open();
-        mCamera.setPreviewCallback(new PreProcessor());
+        Parameters p = mCamera.getParameters();
+        p.setExposureCompensation(0);
+        mCamera.setParameters(p);
+        mCamera.setPreviewCallback(new PreProcessor(mDrawOnTop));
         mPreview.setCamera(mCamera);
     }
 
@@ -59,6 +80,26 @@ public class CineCameraActivity extends Activity {
         }
     }
 
+}
+
+class DrawOnTop extends View {
+	
+	public Rect filter;
+	
+	public DrawOnTop(Context context) {
+		super(context);
+	}
+	
+	@Override
+	public void onDraw(Canvas canvas) {
+		if (filter != null) {
+			Log.d("Desenhando!!", "Estou desenhando!!");
+		    Paint p = new Paint();
+		    p.setColor(Color.BLUE);
+		    canvas.drawRect(filter, p);
+		}
+	}
+	
 }
 
 // ----------------------------------------------------------------------
@@ -96,20 +137,6 @@ class Preview extends ViewGroup implements SurfaceHolder.Callback {
             mSupportedPreviewSizes = mCamera.getParameters().getSupportedPreviewSizes();
             requestLayout();
         }
-    }
-
-    public void switchCamera(Camera camera) {
-       setCamera(camera);
-       try {
-           camera.setPreviewDisplay(mHolder);
-       } catch (IOException exception) {
-           Log.e(TAG, "IOException caused by setPreviewDisplay()", exception);
-       }
-       Camera.Parameters parameters = camera.getParameters();
-       parameters.setPreviewSize(mPreviewSize.width, mPreviewSize.height);
-       requestLayout();
-
-       camera.setParameters(parameters);
     }
 
     @Override
@@ -225,7 +252,13 @@ class Preview extends ViewGroup implements SurfaceHolder.Callback {
 
 class PreProcessor implements Camera.PreviewCallback {
 	
+	private DrawOnTop drawer;
+	
 	private static int RADIUS = 5;
+	
+	public PreProcessor(DrawOnTop drawer) {
+		this.drawer = drawer;
+	}
 	
 	public void onPreviewFrame(byte[] data, Camera camera) {
 		Log.d("onPreviewFrame", "");
@@ -236,6 +269,7 @@ class PreProcessor implements Camera.PreviewCallback {
 		for (int i = xc-RADIUS; i <= xc+RADIUS; ++i) {
 			for (int j = yc-RADIUS; j <= yc+RADIUS; ++j) {
 				acc += data[size.width*j + i] & 0xff;
+				data[size.width*j + i] = 0;
 			}
 		}
 		
@@ -245,6 +279,9 @@ class PreProcessor implements Camera.PreviewCallback {
 		} else {
 			Log.d("onPreviewFrame", "DC = " + dc + "Centro claro!");
 		}
+		
+		//drawer.filter = new Rect(xc-RADIUS, yc-RADIUS, xc+RADIUS, yc+RADIUS);
+		drawer.filter = new Rect(-RADIUS, -RADIUS, RADIUS, RADIUS);
 		
 	}
 	

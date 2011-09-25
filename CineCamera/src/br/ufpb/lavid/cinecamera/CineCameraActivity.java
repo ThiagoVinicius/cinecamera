@@ -17,10 +17,9 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.RelativeLayout;
+import android.widget.FrameLayout;
 
 public class CineCameraActivity extends Activity {
 	private Preview mPreview;
@@ -40,11 +39,11 @@ public class CineCameraActivity extends Activity {
         mPreview = new Preview(this);
         mDrawOnTop = new DrawOnTop(this);
         
-        RelativeLayout contentView = new RelativeLayout(this);
-        //contentView.addView(mPreview);
-        //contentView.addView(mDrawOnTop);
+        FrameLayout contentView = new FrameLayout(this);
+        contentView.addView(mPreview);
+        contentView.addView(mDrawOnTop);
         
-        setContentView(mPreview);
+        setContentView(contentView);
         
 //        addContentView(mDrawOnTop, new LayoutParams 
 //        		(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)); 
@@ -93,10 +92,12 @@ class DrawOnTop extends View {
 	@Override
 	public void onDraw(Canvas canvas) {
 		if (filter != null) {
-			Log.d("Desenhando!!", "Estou desenhando!!");
 		    Paint p = new Paint();
-		    p.setColor(Color.BLUE);
+		    p.setColor(Color.argb(127, 201, 221, 238));
 		    canvas.drawRect(filter, p);
+		    invalidate();
+		} else {
+			invalidate();
 		}
 	}
 	
@@ -109,10 +110,9 @@ class DrawOnTop extends View {
  * to the surface. We need to center the SurfaceView because not all devices have cameras that
  * support preview sizes at the same aspect ratio as the device's display.
  */
-class Preview extends ViewGroup implements SurfaceHolder.Callback {
+class Preview extends SurfaceView implements SurfaceHolder.Callback {
     private final String TAG = "Preview";
 
-    SurfaceView mSurfaceView;
     SurfaceHolder mHolder;
     Size mPreviewSize;
     List<Size> mSupportedPreviewSizes;
@@ -121,12 +121,9 @@ class Preview extends ViewGroup implements SurfaceHolder.Callback {
     Preview(Context context) {
         super(context);
 
-        mSurfaceView = new SurfaceView(context);
-        addView(mSurfaceView);
-
         // Install a SurfaceHolder.Callback so we get notified when the
         // underlying surface is created and destroyed.
-        mHolder = mSurfaceView.getHolder();
+        mHolder = getHolder();
         mHolder.addCallback(this);
         mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
     }
@@ -150,34 +147,6 @@ class Preview extends ViewGroup implements SurfaceHolder.Callback {
 
         if (mSupportedPreviewSizes != null) {
             mPreviewSize = getOptimalPreviewSize(mSupportedPreviewSizes, width, height);
-        }
-    }
-
-    @Override
-    protected void onLayout(boolean changed, int l, int t, int r, int b) {
-        if (changed && getChildCount() > 0) {
-            final View child = getChildAt(0);
-
-            final int width = r - l;
-            final int height = b - t;
-
-            int previewWidth = width;
-            int previewHeight = height;
-            if (mPreviewSize != null) {
-                previewWidth = mPreviewSize.width;
-                previewHeight = mPreviewSize.height;
-            }
-
-            // Center the child SurfaceView within the parent.
-            if (width * previewHeight > height * previewWidth) {
-                final int scaledChildWidth = previewWidth * height / previewHeight;
-                child.layout((width - scaledChildWidth) / 2, 0,
-                        (width + scaledChildWidth) / 2, height);
-            } else {
-                final int scaledChildHeight = previewHeight * width / previewWidth;
-                child.layout(0, (height - scaledChildHeight) / 2,
-                        width, (height + scaledChildHeight) / 2);
-            }
         }
     }
 
@@ -261,7 +230,6 @@ class PreProcessor implements Camera.PreviewCallback {
 	}
 	
 	public void onPreviewFrame(byte[] data, Camera camera) {
-		Log.d("onPreviewFrame", "");
 		Size size = camera.getParameters().getPreviewSize();
 		int xc = size.width/2;
 		int yc = size.height/2;
@@ -274,14 +242,14 @@ class PreProcessor implements Camera.PreviewCallback {
 		}
 		
 		double dc = (double)(acc) / ((RADIUS*2 + 1) * (RADIUS*2 + 1));
-		if (dc < 127d) {
-			Log.d("onPreviewFrame", "DC = " + dc + "Centro escuro!");
-		} else {
-			Log.d("onPreviewFrame", "DC = " + dc + "Centro claro!");
-		}
+//		if (dc < 127d) {
+//			Log.d("onPreviewFrame", "DC = " + dc + "Centro escuro!");
+//		} else {
+//			Log.d("onPreviewFrame", "DC = " + dc + "Centro claro!");
+//		}
 		
 		//drawer.filter = new Rect(xc-RADIUS, yc-RADIUS, xc+RADIUS, yc+RADIUS);
-		drawer.filter = new Rect(-RADIUS, -RADIUS, RADIUS, RADIUS);
+		drawer.filter = new Rect(xc-RADIUS, yc-RADIUS, xc+RADIUS, yc+RADIUS);
 		
 	}
 	

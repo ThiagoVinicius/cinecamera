@@ -66,7 +66,7 @@ public class BorderWalker {
 			        currentDirection = currentDirection.opposite();
 			        break;
 			    }
-			    currentDirection.nextCounterClockwise();
+			    currentDirection = currentDirection.nextCounterClockwise();
 			}
 		} while (currentPoint.equals(p0) == false);
 		

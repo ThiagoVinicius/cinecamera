@@ -8,6 +8,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.hardware.Camera;
 import android.hardware.Camera.Parameters;
@@ -84,6 +85,7 @@ public class CineCameraActivity extends Activity {
 class DrawOnTop extends View {
 	
 	public Rect filter;
+	public Point edges[];
 	
 	public DrawOnTop(Context context) {
 		super(context);
@@ -95,10 +97,15 @@ class DrawOnTop extends View {
 		    Paint p = new Paint();
 		    p.setColor(Color.argb(127, 201, 221, 238));
 		    canvas.drawRect(filter, p);
-		    invalidate();
-		} else {
-			invalidate();
 		}
+		if (edges != null) {
+			Paint p = new Paint();
+			p.setColor(Color.YELLOW);
+			for (int i = 0; i < edges.length; ++i) {
+				canvas.drawCircle(edges[i].x, edges[i].y, 3, p);
+			}
+		}
+	    invalidate();
 	}
 	
 }
@@ -234,10 +241,19 @@ class PreProcessor implements Camera.PreviewCallback {
 		int xc = size.width/2;
 		int yc = size.height/2;
 		int acc = 0;
-		for (int i = xc-RADIUS; i <= xc+RADIUS; ++i) {
-			for (int j = yc-RADIUS; j <= yc+RADIUS; ++j) {
-				acc += data[size.width*j + i] & 0xff;
-				data[size.width*j + i] = 0;
+		
+//		for (int i = xc-RADIUS; i <= xc+RADIUS; ++i) {
+//			for (int j = yc-RADIUS; j <= yc+RADIUS; ++j) {
+//				acc += data[size.width*j + i] & 0xff;
+//				data[size.width*j + i] = 0;
+//			}
+//		}
+		
+		for (int i = 0; i < size.width; ++i) {
+			for (int j = 0; j < size.height; ++j) {
+				if (data[size.width*j + i] < 127) { //escuro
+					
+				}
 			}
 		}
 		
@@ -249,7 +265,7 @@ class PreProcessor implements Camera.PreviewCallback {
 //		}
 		
 		//drawer.filter = new Rect(xc-RADIUS, yc-RADIUS, xc+RADIUS, yc+RADIUS);
-		drawer.filter = new Rect(xc-RADIUS, yc-RADIUS, xc+RADIUS, yc+RADIUS);
+		//drawer.filter = new Rect(xc-RADIUS, yc-RADIUS, xc+RADIUS, yc+RADIUS);
 		
 	}
 	

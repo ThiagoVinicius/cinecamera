@@ -8,6 +8,10 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Paint.Style;
+import android.graphics.Path;
+import android.graphics.Path.FillType;
+import android.graphics.PathEffect;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.hardware.Camera;
@@ -85,7 +89,7 @@ public class CineCameraActivity extends Activity {
 class DrawOnTop extends View {
 	
 	public Rect filter;
-	public Point edges[];
+	public List<PixelBorder> edges;
 	
 	public DrawOnTop(Context context) {
 		super(context);
@@ -101,8 +105,12 @@ class DrawOnTop extends View {
 		if (edges != null) {
 			Paint p = new Paint();
 			p.setColor(Color.YELLOW);
-			for (int i = 0; i < edges.length; ++i) {
-				canvas.drawCircle(edges[i].x, edges[i].y, 3, p);
+			p.setStyle(Style.STROKE);
+			p.setStrokeWidth(3);
+			for (PixelBorder border : edges) {
+				Path path = border.asPolygonalPath();
+				//Log.d("DrawOnTop", path.)
+				canvas.drawPath(path, p);
 			}
 		}
 	    invalidate();
@@ -230,7 +238,7 @@ class PreProcessor implements Camera.PreviewCallback {
 	
 	private DrawOnTop drawer;
 	
-	private static int RADIUS = 5;
+	private BorderWalker walker;
 	
 	public PreProcessor(DrawOnTop drawer) {
 		this.drawer = drawer;
@@ -238,33 +246,16 @@ class PreProcessor implements Camera.PreviewCallback {
 	
 	public void onPreviewFrame(byte[] data, Camera camera) {
 		Size size = camera.getParameters().getPreviewSize();
-		int xc = size.width/2;
-		int yc = size.height/2;
-		int acc = 0;
 		
-//		for (int i = xc-RADIUS; i <= xc+RADIUS; ++i) {
-//			for (int j = yc-RADIUS; j <= yc+RADIUS; ++j) {
-//				acc += data[size.width*j + i] & 0xff;
-//				data[size.width*j + i] = 0;
-//			}
-//		}
-		
-		for (int i = 0; i < size.width; ++i) {
-			for (int j = 0; j < size.height; ++j) {
-				if (data[size.width*j + i] < 127) { //escuro
-					
-				}
-			}
+		if (walker == null || walker.width != size.width || walker.height != size.height) {
+			walker = new BorderWalker(size.width, size.height);
 		}
 		
-		double dc = (double)(acc) / ((RADIUS*2 + 1) * (RADIUS*2 + 1));
-//		if (dc < 127d) {
-//			Log.d("onPreviewFrame", "DC = " + dc + "Centro escuro!");
-//		} else {
-//			Log.d("onPreviewFrame", "DC = " + dc + "Centro claro!");
-//		}
+		walker.reset();
+		drawer.edges = walker.findAllBorders(data);
+		Log.d("Borders", "Borders found: "+drawer.edges.size());
 		
-		//drawer.filter = new Rect(xc-RADIUS, yc-RADIUS, xc+RADIUS, yc+RADIUS);
+		
 		//drawer.filter = new Rect(xc-RADIUS, yc-RADIUS, xc+RADIUS, yc+RADIUS);
 		
 	}

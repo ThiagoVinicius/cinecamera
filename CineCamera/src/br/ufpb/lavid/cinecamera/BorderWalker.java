@@ -1,8 +1,11 @@
 package br.ufpb.lavid.cinecamera;
 
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
 import android.graphics.Point;
+import android.util.Log;
 
 public class BorderWalker {
 	
@@ -24,7 +27,7 @@ public class BorderWalker {
 			}
 		}
 		
-		public Direction nextCounterClockwise() {
+		public Direction nextClockwise() {
 			return Direction.values()[(ordinal()+1)%Direction.values().length];
 		}
 		
@@ -34,8 +37,8 @@ public class BorderWalker {
 	}
 	
 	private final byte zbuffer[];
-	private final int width;
-	private final int height;
+	public final int width;
+	public final int height;
 	
 	public BorderWalker(int width, int height) {
 		this.width = width;
@@ -48,27 +51,58 @@ public class BorderWalker {
 	}
 	
 	public PixelBorder walk(final byte img[], final Point p0) {
-		return walk(img, p0, (byte)127);
+		return walk(img, p0, 127);
 	}
 	
-	public PixelBorder walk(final byte img[], final Point p0, final byte threshold) {
+	public PixelBorder walk(final byte img[], final Point p0, final int threshold) {
 		PixelBorder result = new PixelBorder();
 		result.add(new Point(p0));
 		
+		//Log.d("BorderWalker", "p0 -> "+p0);
+		
 		Direction currentDirection = Direction.WEST;
 		Point currentPoint = p0;
+		int i;
+		int loop = 0;
 		do {
-			for (int i = 0; i < Direction.values().length; ++i) {
+			for (i = 0; i < Direction.values().length; ++i) {
+			    currentDirection = currentDirection.nextClockwise();
 			    Point nextPoint = currentDirection.next(currentPoint);
-			    if (img[nextPoint.y*width + nextPoint.x] < threshold) {
+			    
+			    if (nextPoint.x >= 0 && nextPoint.x < width && 
+			    	nextPoint.y >= 0 && nextPoint.y < height &&
+			    	(img[nextPoint.y*width + nextPoint.x]&0xff) > threshold) {
+			    	
 			        result.add(nextPoint);
 			        currentPoint = nextPoint;
 			        currentDirection = currentDirection.opposite();
+			        zbuffer[nextPoint.y*width + nextPoint.x] = 1;
+			        //Log.d("BorderWalker", "Found point -> "+currentPoint + ", p0 = "+p0);
 			        break;
 			    }
-			    currentDirection = currentDirection.nextCounterClockwise();
+			    
+			}
+			++loop;
+			if (loop % 1000 == 0) {
+				Log.d("BorderWalker", "Looping for "+loop+ " times");
 			}
 		} while (currentPoint.equals(p0) == false);
+		
+		return result;
+	}
+	
+	public List<PixelBorder> findAllBorders(final byte img[]) {
+		List<PixelBorder> result = new LinkedList<PixelBorder>();
+		for (int i = 0; i < height; ++i) {
+			int last = 0;
+			for (int j = 0; j < width; ++j) {
+				int idx = width*i + j;
+				if (zbuffer[idx] == 0 && (img[idx] & 0xff) >= 128 && last < 128) {
+					result.add(walk(img, new Point(j, i)));
+				}
+				last = img[idx] & 0xff;
+			}
+		}
 		
 		return result;
 	}

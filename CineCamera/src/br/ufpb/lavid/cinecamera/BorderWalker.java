@@ -63,7 +63,6 @@ public class BorderWalker {
 		Direction currentDirection = Direction.WEST;
 		Point currentPoint = p0;
 		int i;
-		int loop = 0;
 		do {
 			for (i = 0; i < Direction.values().length; ++i) {
 			    currentDirection = currentDirection.nextClockwise();
@@ -81,10 +80,6 @@ public class BorderWalker {
 			        break;
 			    }
 			    
-			}
-			++loop;
-			if (loop % 1000 == 0) {
-				Log.d("BorderWalker", "Looping for "+loop+ " times");
 			}
 		} while (currentPoint.equals(p0) == false);
 		

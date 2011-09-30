@@ -1,6 +1,7 @@
 package br.ufpb.lavid.cinecamera;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 
 import android.app.Activity;
@@ -8,12 +9,15 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.PointF;
+import android.graphics.RectF;
 import android.graphics.Paint.Style;
 import android.graphics.Path;
 import android.graphics.Path.FillType;
 import android.graphics.PathEffect;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
 import android.hardware.Camera;
 import android.hardware.Camera.Parameters;
 import android.hardware.Camera.Size;
@@ -48,7 +52,12 @@ public class CineCameraActivity extends Activity {
         contentView.addView(mPreview);
         contentView.addView(mDrawOnTop);
         
+        
+        
+        //mPreview.setVisibility(View.INVISIBLE);
+        
         setContentView(contentView);
+        contentView.setKeepScreenOn(true);
         
 //        addContentView(mDrawOnTop, new LayoutParams 
 //        		(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)); 
@@ -89,10 +98,15 @@ public class CineCameraActivity extends Activity {
 class DrawOnTop extends View {
 	
 	public Rect filter;
-	public List<PixelBorder> edges;
+	public Path edges[];
+	public int bigger;
+	public PointF center;
+	private Drawable image;
 	
 	public DrawOnTop(Context context) {
 		super(context);
+		image = context.getResources().getDrawable(R.drawable.cristo_color);
+		image.setBounds(0, 0, image.getIntrinsicWidth(), image.getIntrinsicHeight());
 	}
 	
 	@Override
@@ -103,15 +117,32 @@ class DrawOnTop extends View {
 		    canvas.drawRect(filter, p);
 		}
 		if (edges != null) {
-			Paint p = new Paint();
-			p.setColor(Color.YELLOW);
-			p.setStyle(Style.STROKE);
-			p.setStrokeWidth(3);
-			for (PixelBorder border : edges) {
-				Path path = border.asPolygonalPath();
-				//Log.d("DrawOnTop", path.)
-				canvas.drawPath(path, p);
+			Paint normalPaint = new Paint();
+			normalPaint.setColor(Color.YELLOW);
+			normalPaint.setStyle(Style.STROKE);
+			normalPaint.setStrokeWidth(3);
+			
+			Paint biggerPaint = new Paint(normalPaint);
+			biggerPaint.setColor(Color.RED);
+			int i = 0;
+			for (Path border : edges) {
+				if (i == bigger) {
+					canvas.drawPath(border, biggerPaint);
+				} else {
+					canvas.drawPath(border, normalPaint);
+				}
+				++i;
 			}
+		}
+		if (center != null) {
+			//Log.d("DrawOnTop", "desenhando!! (" + center.x + ", " + center.y + ")");
+			//Log.d("DrawOnTop", "Imagem: " + image.getBounds());
+			canvas.save();
+			canvas.translate(-image.getIntrinsicWidth()/2, -image.getIntrinsicHeight()/2);
+			//canvas.translate(/*getWidth()*/0 , getHeight());
+			canvas.translate(center.x, center.y);
+			image.draw(canvas);
+			canvas.restore();
 		}
 	    invalidate();
 	}
@@ -252,8 +283,29 @@ class PreProcessor implements Camera.PreviewCallback {
 		}
 		
 		walker.reset();
-		drawer.edges = walker.findAllBorders(data);
-		Log.d("Borders", "Borders found: "+drawer.edges.size());
+		List<PixelBorder> borders = walker.findAllBorders(data);
+		Log.d("Borders", "Borders found: "+borders.size());
+		
+		RectF bounds[] = new RectF[borders.size()];
+		Path edges[] = new Path[borders.size()];
+		PointF center = null;
+		float maxArea = 0f;
+		int maxAreaIdx = -1;
+		Iterator<PixelBorder> iter = borders.iterator();
+		for (int i = 0; i < bounds.length; ++i) {
+			edges[i] = iter.next().asPolygonalPath();
+			edges[i].computeBounds(bounds[i] = new RectF(), true);
+			float area = bounds[i].width() * bounds[i].height();
+			if (maxArea < area) {
+				maxArea = area;
+				maxAreaIdx = i;
+				center = new PointF(bounds[i].centerX(), bounds[i].centerY());
+			}
+		}
+		
+		drawer.edges = edges;
+		drawer.bigger = maxAreaIdx;
+		drawer.center = center;
 		
 		
 		//drawer.filter = new Rect(xc-RADIUS, yc-RADIUS, xc+RADIUS, yc+RADIUS);
